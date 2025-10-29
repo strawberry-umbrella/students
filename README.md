@@ -59,3 +59,4 @@ Privacy
 -------
 - All data stays on your device/browser; no network calls are made.
 
+

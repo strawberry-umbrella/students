@@ -199,6 +199,8 @@
         const search = document.getElementById('search-morning').value;
         const roster = filterBySearch(loadRoster(), search, ['name', 'grade']);
         const today = getTodayAttendance();
+        // Sort so absent (present === false) come first
+        roster.sort((a, b) => Number(!!(today[a.id]?.present)) - Number(!!(today[b.id]?.present)) || a.name.localeCompare(b.name));
         container.innerHTML = '';
         roster.forEach(student => {
             const att = today[student.id] || { present: false, inClass: false, lastSeenAt: null };
@@ -217,6 +219,8 @@
         roster
             .filter(s => (today[s.id]?.present) === true)
             .filter(s => showMissingOnly ? (today[s.id]?.inClass) !== true : true)
+            // Sort so missing (inClass === false) come first
+            .sort((a, b) => Number(!!(today[a.id]?.inClass)) - Number(!!(today[b.id]?.inClass)) || a.name.localeCompare(b.name))
             .forEach(student => {
                 const att = today[student.id] || { present: false, inClass: false, lastSeenAt: null };
                 const card = createStudentCard(student, { context: 'between', attendance: att });
@@ -430,5 +434,6 @@
 
     document.addEventListener('DOMContentLoaded', init);
 })();
+
 
 
