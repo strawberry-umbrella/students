@@ -162,8 +162,11 @@
         card.appendChild(row);
 
         presentCheckbox.addEventListener('change', () => {
-            const updated = upsertTodayAttendance(student.id, { present: presentCheckbox.checked });
+            upsertTodayAttendance(student.id, { present: presentCheckbox.checked });
             updatePill();
+            // Re-render to apply sorting immediately
+            renderMorning();
+            renderBetween();
         });
 
         inClassCheckbox.addEventListener('change', () => {
@@ -173,6 +176,8 @@
             });
             lastSeen.textContent = updated.lastSeenAt ? `Last seen: ${new Date(updated.lastSeenAt).toLocaleTimeString()}` : '';
             updatePill();
+            // Re-render to apply sorting immediately (Between Classes view)
+            renderBetween();
         });
 
         delBtn.addEventListener('click', () => {
