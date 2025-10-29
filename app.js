@@ -84,6 +84,7 @@
         const { context, attendance } = options;
         const card = document.createElement('div');
         card.className = 'card';
+        card.dataset.id = student.id;
 
         const header = document.createElement('div');
         header.className = 'card-header';
@@ -165,8 +166,8 @@
             upsertTodayAttendance(student.id, { present: presentCheckbox.checked });
             updatePill();
             // Re-render to apply sorting immediately
-            renderMorning();
-            renderBetween();
+            renderMorning(student.id);
+            renderBetween(student.id);
         });
 
         inClassCheckbox.addEventListener('change', () => {
@@ -177,7 +178,7 @@
             lastSeen.textContent = updated.lastSeenAt ? `Last seen: ${new Date(updated.lastSeenAt).toLocaleTimeString()}` : '';
             updatePill();
             // Re-render to apply sorting immediately (Between Classes view)
-            renderBetween();
+            renderBetween(student.id);
         });
 
         delBtn.addEventListener('click', () => {
@@ -199,11 +200,63 @@
         return list.filter(item => fields.some(f => String(item[f] || '').toLowerCase().includes(q)));
     }
 
-    function renderMorning() {
+    function measurePositions(container) {
+        const map = {};
+        container.querySelectorAll('.card').forEach(el => {
+            const id = el.dataset.id;
+            if (!id) return;
+            const r = el.getBoundingClientRect();
+            map[id] = { top: r.top, left: r.left };
+        });
+        return map;
+    }
+
+    function runFlipAnimation(container, firstPositions) {
+        const children = Array.from(container.children);
+        children.forEach(child => {
+            const id = child.dataset.id;
+            const rect = child.getBoundingClientRect();
+            const lastTop = rect.top;
+            const lastLeft = rect.left;
+            const first = id ? firstPositions[id] : undefined;
+            let fromY = 0;
+            let fromX = 0;
+            let isNew = false;
+            if (first !== undefined) {
+                fromY = first.top - lastTop;
+                fromX = first.left - lastLeft;
+            } else {
+                // New item, subtle reveal
+                fromY = -10;
+                fromX = 0;
+                isNew = true;
+            }
+            if (fromY || fromX) {
+                child.style.transform = `translate(${fromX}px, ${fromY}px)`;
+                if (isNew) child.style.opacity = '0'; else child.style.opacity = '0.9';
+                child.classList.add('flip-anim');
+                requestAnimationFrame(() => {
+                    // force reflow to ensure the transition kicks in reliably
+                    // eslint-disable-next-line no-unused-expressions
+                    child.offsetHeight;
+                    child.style.transform = '';
+                    child.style.opacity = '';
+                });
+                const cleanup = () => {
+                    child.classList.remove('flip-anim');
+                    child.removeEventListener('transitionend', cleanup);
+                };
+                child.addEventListener('transitionend', cleanup);
+            }
+        });
+    }
+
+    function renderMorning(highlightId) {
         const container = document.getElementById('morning-list');
         const search = document.getElementById('search-morning').value;
         const roster = filterBySearch(loadRoster(), search, ['name', 'grade']);
         const today = getTodayAttendance();
+        const first = measurePositions(container);
         // Sort so absent (present === false) come first
         roster.sort((a, b) => Number(!!(today[a.id]?.present)) - Number(!!(today[b.id]?.present)) || a.name.localeCompare(b.name));
         container.innerHTML = '';
@@ -212,14 +265,23 @@
             const card = createStudentCard(student, { context: 'morning', attendance: att });
             container.appendChild(card);
         });
+        if (typeof highlightId === 'string') {
+            const el = container.querySelector(`[data-id="${highlightId}"]`);
+            if (el) {
+                el.classList.add('flash-anim');
+                el.addEventListener('animationend', () => el.classList.remove('flash-anim'), { once: true });
+            }
+        }
+        runFlipAnimation(container, first);
     }
 
-    function renderBetween() {
+    function renderBetween(highlightId) {
         const container = document.getElementById('between-list');
         const search = document.getElementById('search-between').value;
         const showMissingOnly = document.getElementById('show-missing-only').checked;
         const roster = filterBySearch(loadRoster(), search, ['name', 'grade']);
         const today = getTodayAttendance();
+        const first = measurePositions(container);
         container.innerHTML = '';
         roster
             .filter(s => (today[s.id]?.present) === true)
@@ -231,6 +293,14 @@
                 const card = createStudentCard(student, { context: 'between', attendance: att });
                 container.appendChild(card);
             });
+        if (typeof highlightId === 'string') {
+            const el = container.querySelector(`[data-id="${highlightId}"]`);
+            if (el) {
+                el.classList.add('flash-anim');
+                el.addEventListener('animationend', () => el.classList.remove('flash-anim'), { once: true });
+            }
+        }
+        runFlipAnimation(container, first);
     }
 
     function renderRoster() {

@@ -88,6 +88,7 @@ main { padding: 16px; max-width: 1100px; margin: 0 auto; }
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 12px;
+  will-change: transform, opacity;
 }
 
 .card-header {
@@ -108,6 +109,14 @@ main { padding: 16px; max-width: 1100px; margin: 0 auto; }
 .pill.present { color: var(--accent); border-color: rgba(22,163,74,.25); background: rgba(22,163,74,.06); }
 .pill.absent { color: var(--danger); border-color: rgba(220,38,38,.25); background: rgba(220,38,38,.06); }
 .pill.missing { color: var(--warning); border-color: rgba(217,119,6,.25); background: rgba(217,119,6,.06); }
+
+.flip-anim { transition: transform 520ms cubic-bezier(.22,.61,.36,1), opacity 380ms ease; }
+
+.flash-anim { animation: flashPulse 900ms ease-out 1; }
+@keyframes flashPulse {
+  0%   { box-shadow: 0 0 0 6px rgba(234,179,8,.35); }
+  100% { box-shadow: 0 0 0 0 rgba(234,179,8,0); }
+}
 
 .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
 .spacer { flex: 1; }
