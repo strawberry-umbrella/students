@@ -12,7 +12,7 @@ Features
 Getting Started (Windows)
 -------------------------
 1. Open the folder:
-   - `C:\Users\strum\OneDrive\Documents\GitHub\students\`
+   - `C:\...\students\`
 2. Double-click `index.html` to open it in your default browser (Edge/Chrome).
    - If your browser blocks local file downloads for CSV export, use Chrome or Edge.
 
