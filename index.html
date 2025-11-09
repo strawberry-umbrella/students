@@ -46,9 +46,18 @@
                     <button type="submit">Add Student</button>
                 </form>
                 <div class="import-export">
-                    <input type="file" id="import-csv" accept=".csv">
-                    <button id="export-csv">Export Roster CSV</button>
-                    <button id="reset-sample">Load Sample Roster</button>
+                    <div class="import-section">
+                        <textarea id="import-csv-text" placeholder="Paste CSV data here (Name,Grade)&#10;Example:&#10;Alex Johnson,10A&#10;Briana Lee,10A" rows="4"></textarea>
+                        <button id="import-csv-text-btn">Import from Text</button>
+                        <span class="import-or">or</span>
+                        <input type="file" id="import-csv" accept=".csv">
+                        <button id="import-csv-file-btn">Import from File</button>
+                    </div>
+                    <div class="export-section">
+                        <button id="export-csv">Export Roster CSV</button>
+                        <button id="copy-csv">Copy CSV to Clipboard</button>
+                        <button id="reset-sample">Load Sample Roster</button>
+                    </div>
                 </div>
                 <input type="text" id="search-roster" placeholder="Search roster...">
             </div>

@@ -378,6 +378,67 @@
         });
     }
 
+    function processCsvImport(text) {
+        if (!text || !text.trim()) {
+            alert('Please provide CSV data.');
+            return false;
+        }
+        const parsed = parseCsv(text);
+        if (!parsed || parsed.length === 0) {
+            alert('Could not parse CSV. Please check the format.');
+            return false;
+        }
+        const header = parsed[0]?.map(h => h.trim().toLowerCase()) || [];
+        const nameIdx = header.findIndex(h => ['name', 'student', 'student name'].includes(h));
+        const gradeIdx = header.findIndex(h => ['grade', 'class', 'room'].includes(h));
+        
+        // If no header with "name", try first row as header or assume first column is name
+        let startRow = 1;
+        if (nameIdx === -1) {
+            // Try to detect if first row is data (no header)
+            if (parsed.length > 0 && parsed[0].length >= 1) {
+                const firstCell = parsed[0][0].trim().toLowerCase();
+                // If first cell doesn't look like a header, treat first row as data
+                if (firstCell !== 'name' && firstCell !== 'student' && firstCell !== 'student name') {
+                    startRow = 0;
+                    nameIdx = 0;
+                    gradeIdx = parsed[0].length > 1 ? 1 : -1;
+                } else {
+                    alert('CSV must include a Name column (or first column should be names).');
+                    return false;
+                }
+            } else {
+                alert('CSV must include a Name column.');
+                return false;
+            }
+        }
+        
+        const roster = [];
+        for (let i = startRow; i < parsed.length; i++) {
+            const row = parsed[i];
+            if (!row || !row.length) continue;
+            const name = (row[nameIdx] || '').trim();
+            const grade = gradeIdx !== -1 && row[gradeIdx] ? (row[gradeIdx] || '').trim() : '';
+            if (!name) continue;
+            roster.push({ id: crypto.randomUUID(), name, grade });
+        }
+        if (!roster.length) {
+            alert('No students found in CSV. Please check the data.');
+            return false;
+        }
+        saveRoster(roster);
+        renderRoster();
+        renderMorning();
+        renderBetween();
+        renderStatus(`Imported ${roster.length} student(s) from CSV`);
+        return true;
+    }
+
+    function getCsvText() {
+        const roster = loadRoster();
+        return ['Name,Grade', ...roster.map(s => `${escapeCsv(s.name)},${escapeCsv(s.grade)}`)].join('\n');
+    }
+
     function bindRosterToolbar() {
         document.getElementById('add-student-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -394,49 +455,68 @@
         });
 
         document.getElementById('export-csv').addEventListener('click', () => {
-            const roster = loadRoster();
-            const lines = ['Name,Grade', ...roster.map(s => `${escapeCsv(s.name)},${escapeCsv(s.grade)}`)];
-            const blob = new Blob(["\uFEFF" + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const csvText = getCsvText();
+            const blob = new Blob(["\uFEFF" + csvText], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = 'roster.csv';
             a.click();
             URL.revokeObjectURL(url);
+            // Also populate textarea for easy viewing/copying
+            document.getElementById('import-csv-text').value = csvText;
             renderStatus('Exported roster');
+        });
+
+        document.getElementById('copy-csv').addEventListener('click', async () => {
+            const csvText = getCsvText();
+            try {
+                await navigator.clipboard.writeText(csvText);
+                // Also populate textarea
+                document.getElementById('import-csv-text').value = csvText;
+                renderStatus('CSV copied to clipboard');
+            } catch (err) {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = csvText;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    document.getElementById('import-csv-text').value = csvText;
+                    renderStatus('CSV copied to clipboard');
+                } catch (e) {
+                    alert('Failed to copy to clipboard. Please use Export instead.');
+                }
+                document.body.removeChild(textarea);
+            }
+        });
+
+        document.getElementById('import-csv-text-btn').addEventListener('click', () => {
+            const text = document.getElementById('import-csv-text').value.trim();
+            if (processCsvImport(text)) {
+                document.getElementById('import-csv-text').value = '';
+            }
+        });
+
+        document.getElementById('import-csv-file-btn').addEventListener('click', () => {
+            document.getElementById('import-csv').click();
         });
 
         document.getElementById('import-csv').addEventListener('change', async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            const text = await file.text();
-            const parsed = parseCsv(text);
-            const header = parsed[0]?.map(h => h.trim().toLowerCase()) || [];
-            const nameIdx = header.findIndex(h => ['name', 'student', 'student name'].includes(h));
-            const gradeIdx = header.findIndex(h => ['grade', 'class', 'room'].includes(h));
-            if (nameIdx === -1) {
-                alert('CSV must include a Name column.');
-                return;
+            try {
+                const text = await file.text();
+                if (processCsvImport(text)) {
+                    e.target.value = '';
+                }
+            } catch (err) {
+                alert('Error reading file: ' + err.message);
+                e.target.value = '';
             }
-            const roster = [];
-            for (let i = 1; i < parsed.length; i++) {
-                const row = parsed[i];
-                if (!row || !row.length) continue;
-                const name = (row[nameIdx] || '').trim();
-                const grade = gradeIdx !== -1 ? (row[gradeIdx] || '').trim() : '';
-                if (!name) continue;
-                roster.push({ id: crypto.randomUUID(), name, grade });
-            }
-            if (!roster.length) {
-                alert('No students found in CSV.');
-                return;
-            }
-            saveRoster(roster);
-            renderRoster();
-            renderMorning();
-            renderBetween();
-            renderStatus('Imported roster from CSV');
-            e.target.value = '';
         });
 
         document.getElementById('reset-sample').addEventListener('click', () => {
